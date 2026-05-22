@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // reportParams identifies a single App Store Connect report request.
@@ -20,36 +19,8 @@ type reportParams struct {
 	version    string
 }
 
-// Report is a parsed TSV report: one map per row, keyed by column header.
-type Report struct {
-	Date string // The report date that actually returned data (YYYY-MM-DD).
-	Rows []map[string]string
-}
-
-// fetchLatestReport walks back from yesterday up to lookback days, returning the
-// most recent report that has data. Sales/subscription data lags 1-2 days, and
-// some dates simply have no report, so a 404 means "try an earlier date".
-func (c *Client) fetchLatestReport(ctx context.Context, p reportParams, lookback int) (*Report, error) {
-	var lastErr error
-	for i := 1; i <= lookback; i++ {
-		date := time.Now().UTC().AddDate(0, 0, -i).Format("2006-01-02")
-		rows, found, err := c.fetchReportForDate(ctx, p, date)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		if found {
-			return &Report{Date: date, Rows: rows}, nil
-		}
-	}
-	if lastErr != nil {
-		return nil, fmt.Errorf("no %s report in last %d days; last error: %w", p.reportType, lookback, lastErr)
-	}
-	return nil, fmt.Errorf("no %s report found in last %d days", p.reportType, lookback)
-}
-
 // fetchReportForDate fetches one report for an exact date. found is false when
-// Apple reports no data for that date (HTTP 404).
+// Apple reports no data for that date (HTTP 404), which is normal for some days.
 func (c *Client) fetchReportForDate(ctx context.Context, p reportParams, date string) (rows []map[string]string, found bool, err error) {
 	q := url.Values{}
 	q.Set("filter[frequency]", p.frequency)

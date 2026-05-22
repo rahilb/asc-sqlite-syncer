@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Config holds all runtime configuration for the exporter.
+// Config holds all runtime configuration for the sync daemon.
 type Config struct {
 	// App Store Connect API credentials.
 	KeyID      string // ASC API key ID (the "kid").
@@ -29,11 +29,12 @@ type Config struct {
 	SalesReportVersion        string
 	SubscriptionReportVersion string
 
-	// Behaviour.
-	ListenAddr      string
-	RefreshInterval time.Duration
-	ReportLookback  int // How many days back to search for the latest report.
-	ReviewsMax      int // Max reviews to page through per app.
+	// Storage and sync behaviour.
+	DBPath          string        // Path to the SQLite database file.
+	BackfillDays    int           // Days of history to pull on the first run.
+	ResyncDays      int           // Recent days re-pulled each run (catches restatements).
+	RefreshInterval time.Duration // How often the daemon syncs.
+	ReviewsMax      int           // Max reviews to page through per app.
 	HTTPTimeout     time.Duration
 }
 
@@ -50,9 +51,10 @@ func Load() (*Config, error) {
 		EnableReviews:             envBool("ENABLE_REVIEWS", true),
 		SalesReportVersion:        envStr("SALES_REPORT_VERSION", "1_1"),
 		SubscriptionReportVersion: envStr("SUBSCRIPTION_REPORT_VERSION", "1_4"),
-		ListenAddr:                envStr("LISTEN_ADDR", ":9844"),
-		RefreshInterval:           envDuration("REFRESH_INTERVAL", time.Hour),
-		ReportLookback:            envInt("REPORT_LOOKBACK_DAYS", 5),
+		DBPath:                    envStr("DB_PATH", "asc.db"),
+		BackfillDays:              envInt("BACKFILL_DAYS", 90),
+		ResyncDays:                envInt("RESYNC_DAYS", 5),
+		RefreshInterval:           envDuration("REFRESH_INTERVAL", 6*time.Hour),
 		ReviewsMax:                envInt("REVIEWS_MAX", 1000),
 		HTTPTimeout:               envDuration("HTTP_TIMEOUT", 60*time.Second),
 	}
@@ -91,7 +93,13 @@ func (c *Config) validate() error {
 		return fmt.Errorf("ASC_APP_IDS is required when the reviews source is enabled")
 	}
 	if !c.EnableSales && !c.EnableSubscriptions && !c.EnableReviews {
-		return fmt.Errorf("all sources disabled: nothing to export")
+		return fmt.Errorf("all sources disabled: nothing to sync")
+	}
+	if c.BackfillDays < 1 {
+		c.BackfillDays = 1
+	}
+	if c.ResyncDays < 1 {
+		c.ResyncDays = 1
 	}
 	return nil
 }

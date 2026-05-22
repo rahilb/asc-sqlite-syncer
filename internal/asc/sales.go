@@ -29,20 +29,20 @@ type SalesData struct {
 	Proceeds map[SalesProceedKey]float64
 }
 
-// SalesReport fetches and aggregates the latest available daily SALES SUMMARY
-// report for the vendor.
-func (c *Client) SalesReport(ctx context.Context, vendor, version string, lookback int) (*SalesData, error) {
-	rep, err := c.fetchLatestReport(ctx, reportParams{
+// SalesReportForDate fetches and aggregates the daily SALES SUMMARY report for
+// an exact date. found is false when no report exists for that date.
+func (c *Client) SalesReportForDate(ctx context.Context, vendor, version, date string) (data *SalesData, found bool, err error) {
+	rows, found, err := c.fetchReportForDate(ctx, reportParams{
 		frequency:  "DAILY",
 		reportType: "SALES",
 		subType:    "SUMMARY",
 		vendor:     vendor,
 		version:    version,
-	}, lookback)
-	if err != nil {
-		return nil, err
+	}, date)
+	if err != nil || !found {
+		return nil, found, err
 	}
-	return aggregateSales(rep.Date, rep.Rows), nil
+	return aggregateSales(date, rows), true, nil
 }
 
 // aggregateSales rolls report rows up into the exported buckets.

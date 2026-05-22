@@ -8,6 +8,11 @@
 *.test
 coverage.*
 
+# SQLite database files
+*.db
+*.db-wal
+*.db-shm
+
 # Secrets — never commit ASC credentials
 *.p8
 .env

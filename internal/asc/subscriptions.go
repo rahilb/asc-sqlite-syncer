@@ -21,20 +21,20 @@ type SubscriptionData struct {
 	Active map[SubscriptionKey]float64
 }
 
-// SubscriptionReport fetches and aggregates the latest available daily
-// SUBSCRIPTION SUMMARY report for the vendor.
-func (c *Client) SubscriptionReport(ctx context.Context, vendor, version string, lookback int) (*SubscriptionData, error) {
-	rep, err := c.fetchLatestReport(ctx, reportParams{
+// SubscriptionReportForDate fetches and aggregates the daily SUBSCRIPTION
+// SUMMARY report for an exact date. found is false when no report exists.
+func (c *Client) SubscriptionReportForDate(ctx context.Context, vendor, version, date string) (data *SubscriptionData, found bool, err error) {
+	rows, found, err := c.fetchReportForDate(ctx, reportParams{
 		frequency:  "DAILY",
 		reportType: "SUBSCRIPTION",
 		subType:    "SUMMARY",
 		vendor:     vendor,
 		version:    version,
-	}, lookback)
-	if err != nil {
-		return nil, err
+	}, date)
+	if err != nil || !found {
+		return nil, found, err
 	}
-	return aggregateSubscriptions(rep.Date, rep.Rows), nil
+	return aggregateSubscriptions(date, rows), true, nil
 }
 
 // aggregateSubscriptions rolls report rows up into active-subscriber buckets.
