@@ -1,0 +1,40 @@
+[Unit]
+Description=App Store Connect Prometheus exporter
+Documentation=https://github.com/rahilb/asc-prometheus-exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Config and secrets (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY_PATH, ...).
+# Create from .env.example. Keep mode 0600, owned by the service user.
+EnvironmentFile=/etc/asc-prometheus-exporter/asc.env
+ExecStart=/usr/local/bin/asc-prometheus-exporter
+Restart=on-failure
+RestartSec=10
+
+# Run as an unprivileged dynamic user.
+DynamicUser=yes
+# Where the .p8 key lives; readable only by this service (StateDirectory =
+# /var/lib/asc-prometheus-exporter, created mode 0700).
+StateDirectory=asc-prometheus-exporter
+
+# Hardening.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

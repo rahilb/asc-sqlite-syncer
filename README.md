@@ -86,6 +86,30 @@ scrape_configs:
       - targets: ["localhost:9844"]
 ```
 
+## Deploy with systemd
+
+An example unit is in [`deploy/asc-prometheus-exporter.service`](deploy/asc-prometheus-exporter.service).
+It runs as an unprivileged `DynamicUser` with the binary at
+`/usr/local/bin/asc-prometheus-exporter` and config in an `EnvironmentFile`.
+
+```sh
+sudo install -m 0755 asc-prometheus-exporter /usr/local/bin/
+
+# Config + secrets, readable only by the service.
+sudo mkdir -p /etc/asc-prometheus-exporter
+sudo cp .env.example /etc/asc-prometheus-exporter/asc.env
+sudo chmod 0600 /etc/asc-prometheus-exporter/asc.env   # then edit it
+
+# Put the .p8 key where StateDirectory will expose it and point
+# ASC_PRIVATE_KEY_PATH at it, e.g.:
+#   ASC_PRIVATE_KEY_PATH=/var/lib/asc-prometheus-exporter/AuthKey.p8
+
+sudo cp deploy/asc-prometheus-exporter.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now asc-prometheus-exporter
+journalctl -u asc-prometheus-exporter -f
+```
+
 ## Metrics
 
 | Metric | Labels | Description |
