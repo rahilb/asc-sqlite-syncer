@@ -1,8 +1,7 @@
 # asc-sqlite-syncer
 
 Syncs App Store Connect data into a **SQLite** database that Grafana reads
-directly. (It started as a Prometheus exporter — see
-[Why SQLite, not Prometheus](#why-sqlite-not-prometheus) for why it isn't.)
+directly.
 
 App Store Connect's own dashboards are slow and awkward to alert on. This pulls
 the data over the ASC API on a timer and stores it in SQLite, so you can graph
@@ -16,22 +15,14 @@ It syncs three sources:
 - **Ratings & reviews** — total review count, average rating and a star
   histogram from the Customer Reviews API.
 
-## Why SQLite, not Prometheus
+## Why SQLite
 
 ASC data is **low-volume daily aggregates that Apple restates** for a few days
-after the fact. That is the opposite of what Prometheus assumes (high-frequency,
-append-only, timestamped-at-scrape). Forcing it into Prometheus means:
-
-- no clean backfill — scrapes are stamped at scrape time, not the report date;
-- restatements can't overwrite history;
-- the same daily value is re-scraped all day, so it looks like a counter but
-  isn't, and `rate()`/`sum_over_time()` silently double-count.
-
-A relational store fixes all of that. Each `(report_date, dimensions)` is a
-unique row; re-syncing a date does a **delete-then-insert in a transaction**, so
-restatements overwrite cleanly and series that vanished from a report are
-removed. Backfill is just inserting past dates. SQLite needs zero infrastructure
-— it's a single file Grafana can open.
+after the fact. A relational store fits that exactly: each
+`(report_date, dimensions)` is a unique row, and re-syncing a date does a
+**delete-then-insert in a transaction**, so restatements overwrite cleanly and
+series that vanished from a report are removed. Backfill is just inserting past
+dates. SQLite needs zero infrastructure — it's a single file Grafana can open.
 
 ## How it works
 
