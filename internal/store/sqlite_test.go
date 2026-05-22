@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rahilb/asc-prometheus-exporter/internal/asc"
+	"github.com/rahilb/asc-sqlite-syncer/internal/asc"
 )
 
 func openTest(t *testing.T) *Store {

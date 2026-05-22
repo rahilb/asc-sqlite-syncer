@@ -12,7 +12,7 @@ import (
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver, registered as "sqlite".
 
-	"github.com/rahilb/asc-prometheus-exporter/internal/asc"
+	"github.com/rahilb/asc-sqlite-syncer/internal/asc"
 )
 
 // Store is a SQLite-backed data store.

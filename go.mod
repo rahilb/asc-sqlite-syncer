@@ -1,4 +1,4 @@
-module github.com/rahilb/asc-prometheus-exporter
+module github.com/rahilb/asc-sqlite-syncer
 
 go 1.25.3
 

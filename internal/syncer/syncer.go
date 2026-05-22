@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/rahilb/asc-prometheus-exporter/internal/asc"
-	"github.com/rahilb/asc-prometheus-exporter/internal/config"
-	"github.com/rahilb/asc-prometheus-exporter/internal/store"
+	"github.com/rahilb/asc-sqlite-syncer/internal/asc"
+	"github.com/rahilb/asc-sqlite-syncer/internal/config"
+	"github.com/rahilb/asc-sqlite-syncer/internal/store"
 )
 
 // Syncer pulls ASC data into the store on a schedule.

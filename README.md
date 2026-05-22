@@ -1,8 +1,8 @@
-# asc-prometheus-exporter
+# asc-sqlite-syncer
 
-> Despite the name, this no longer exports to Prometheus. It syncs App Store
-> Connect data into a **SQLite** database that Grafana reads directly. See
-> [Why SQLite, not Prometheus](#why-sqlite-not-prometheus).
+Syncs App Store Connect data into a **SQLite** database that Grafana reads
+directly. (It started as a Prometheus exporter — see
+[Why SQLite, not Prometheus](#why-sqlite-not-prometheus) for why it isn't.)
 
 App Store Connect's own dashboards are slow and awkward to alert on. This pulls
 the data over the ASC API on a timer and stores it in SQLite, so you can graph
@@ -81,7 +81,7 @@ All config is via environment variables (see [`.env.example`](.env.example)).
 ## Run
 
 ```sh
-go build -o asc-prometheus-exporter .
+go build -o asc-sqlite-syncer .
 
 export ASC_KEY_ID=ABC123DEF4
 export ASC_ISSUER_ID=00000000-0000-0000-0000-000000000000
@@ -91,10 +91,10 @@ export ASC_APP_IDS=1234567890
 export DB_PATH=/var/lib/asc/asc.db
 
 # Daemon (syncs on REFRESH_INTERVAL):
-./asc-prometheus-exporter
+./asc-sqlite-syncer
 
 # Or a single sync, e.g. from cron:
-./asc-prometheus-exporter --once
+./asc-sqlite-syncer --once
 ```
 
 Flags: `--once` (single sync then exit), `--debug` (verbose logging).
@@ -140,31 +140,31 @@ WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM reviews);
 | `review_ratings` | `(snapshot_date, app, rating)` | `count` |
 | `meta` | `key` | `value` (holds the `backfilled` marker) |
 
-## Deploy with systemd
+## Deploy with cron
 
-An example unit is in [`deploy/asc-prometheus-exporter.service`](deploy/asc-prometheus-exporter.service).
-It runs as an unprivileged `DynamicUser`, with the binary at
-`/usr/local/bin/asc-prometheus-exporter`, config in an `EnvironmentFile`, and a
-writable `StateDirectory` for the `.p8` key and the SQLite database.
+Run a single sync (`--once`) on a schedule. cron doesn't load env files, so the
+job sources one itself.
 
 ```sh
-sudo install -m 0755 asc-prometheus-exporter /usr/local/bin/
+# 1. Install the binary.
+sudo install -m 0755 asc-sqlite-syncer /usr/local/bin/
 
-sudo mkdir -p /etc/asc-prometheus-exporter
-sudo cp .env.example /etc/asc-prometheus-exporter/asc.env
-sudo chmod 0600 /etc/asc-prometheus-exporter/asc.env   # then edit it
-# Point DB_PATH and ASC_PRIVATE_KEY_PATH inside the state dir, e.g.:
-#   DB_PATH=/var/lib/asc-prometheus-exporter/asc.db
-#   ASC_PRIVATE_KEY_PATH=/var/lib/asc-prometheus-exporter/AuthKey.p8
+# 2. Config + secrets, readable only by you.
+sudo mkdir -p /etc/asc-sqlite-syncer
+sudo cp .env.example /etc/asc-sqlite-syncer/asc.env
+sudo chmod 0600 /etc/asc-sqlite-syncer/asc.env   # then edit it
+# Use absolute paths in asc.env, e.g.:
+#   DB_PATH=/var/lib/asc/asc.db
+#   ASC_PRIVATE_KEY_PATH=/etc/asc-sqlite-syncer/AuthKey.p8
+sudo mkdir -p /var/lib/asc
 
-sudo cp deploy/asc-prometheus-exporter.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now asc-prometheus-exporter
-journalctl -u asc-prometheus-exporter -f
+# 3. Add a cron job (every 6h). Run `crontab -e` and add:
+0 */6 * * * set -a; . /etc/asc-sqlite-syncer/asc.env; set +a; /usr/local/bin/asc-sqlite-syncer --once >> /var/log/asc-sqlite-syncer.log 2>&1
 ```
 
-For a cron-style single sync instead of the daemon, run `--once` from a
-systemd timer or crontab.
+The first run backfills `BACKFILL_DAYS` of history; subsequent runs re-sync the
+last `RESYNC_DAYS`. With cron there's no long-running daemon, so
+`REFRESH_INTERVAL` is unused.
 
 ## Caveats
 
@@ -185,5 +185,5 @@ systemd timer or crontab.
 
 ```sh
 go test ./...
-go build -o asc-prometheus-exporter .
+go build -o asc-sqlite-syncer .
 ```

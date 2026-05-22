@@ -1,5 +1,5 @@
 # Binaries
-/asc-prometheus-exporter
+/asc-sqlite-syncer
 /dist/
 *.exe
 
