@@ -1,0 +1,21 @@
+# Binaries
+/asc-prometheus-exporter
+/dist/
+*.exe
+
+# Test / coverage artifacts
+*.out
+*.test
+coverage.*
+
+# Secrets — never commit ASC credentials
+*.p8
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
